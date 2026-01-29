@@ -16,8 +16,10 @@ public class DBConnection {
 
 	static {
 		// 優先嘗試使用環境變數（Railway 雲端環境）
-		String dbUrl = System.getenv("DATABASE_URL");
-		if (dbUrl != null && !dbUrl.isEmpty()) {
+		String dbUrl = System.getenv("MYSQL_PUBLIC_URL");
+		String dbHost = System.getenv("MYSQLHOST");
+
+		if ((dbUrl != null && !dbUrl.isEmpty()) || (dbHost != null && !dbHost.isEmpty())) {
 			useEnvVars = true;
 			System.out.println("使用環境變數連接資料庫 (Railway mode)");
 		} else {
@@ -37,23 +39,28 @@ public class DBConnection {
 	public static Connection getConnection() throws SQLException {
 		if (useEnvVars) {
 			// Railway 模式：從環境變數讀取
-			String dbUrl = System.getenv("DATABASE_URL");
-			String dbUser = System.getenv("MYSQL_USER");
-			String dbPassword = System.getenv("MYSQL_PASSWORD");
-			String dbName = System.getenv("MYSQL_DATABASE");
+			// Railway 提供的變數名稱（全大寫無底線）
+			String dbUrl = System.getenv("MYSQL_PUBLIC_URL");
+			String dbUser = System.getenv("MYSQLUSER");
+			String dbPassword = System.getenv("MYSQLPASSWORD");
+			String dbHost = System.getenv("MYSQLHOST");
+			String dbPort = System.getenv("MYSQLPORT");
+			String dbName = System.getenv("MYSQLDATABASE");
 
-			// Railway MySQL URL 格式通常是: mysql://user:password@host:port/database
-			// 需要轉換成 JDBC URL
-			if (dbUrl != null && dbUrl.startsWith("mysql://")) {
+			// 如果有完整的 URL，直接使用
+			if (dbUrl != null && !dbUrl.isEmpty()) {
+				// Railway 的 URL 格式: mysql://user:pass@host:port/db
+				// 轉換成 JDBC URL
 				dbUrl = dbUrl.replace("mysql://", "jdbc:mysql://");
-			} else if (dbUser != null && dbPassword != null) {
-				// 如果沒有 DATABASE_URL，用個別變數組合
-				String host = System.getenv("MYSQL_HOST");
-				String port = System.getenv("MYSQL_PORT");
-				dbUrl = String.format("jdbc:mysql://%s:%s/%s", host, port, dbName);
+				// 從 URL 中提取 user 和 password（如果需要）
+				return DriverManager.getConnection(dbUrl);
+			} else if (dbHost != null && dbUser != null && dbPassword != null) {
+				// 用個別變數組合
+				String jdbcUrl = String.format("jdbc:mysql://%s:%s/%s", dbHost, dbPort, dbName);
+				return DriverManager.getConnection(jdbcUrl, dbUser, dbPassword);
+			} else {
+				throw new SQLException("找不到資料庫環境變數 (MYSQL_PUBLIC_URL 或 MYSQLHOST/MYSQLUSER/MYSQLPASSWORD)");
 			}
-
-			return DriverManager.getConnection(dbUrl, dbUser, dbPassword);
 		} else {
 			// 本機模式：使用 JNDI DataSource
 			if (ds == null) {
