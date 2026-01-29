@@ -91,11 +91,34 @@
 			</plugin>
 
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-war-plugin</artifactId>
-				<version>3.5.1</version>
-			</plugin>
-		</plugins>
-	</build>
+			<groupId>org.apache.maven.plugins</groupId>
+			<artifactId>maven-war-plugin</artifactId>
+			<version>3.5.1</version>
+		</plugin>
+
+		<!-- Tomcat Embedded Plugin for PaaS Deployment -->
+		<plugin>
+			<groupId>org.apache.tomcat.maven</groupId>
+			<artifactId>tomcat7-maven-plugin</artifactId>
+			<version>2.2</version>
+			<configuration>
+				<path>/</path>
+				<port>8080</port>
+			</configuration>
+			<executions>
+				<execution>
+					<id>tomcat-run</id>
+					<goals>
+						<goal>exec-war-only</goal>
+					</goals>
+					<phase>package</phase>
+					<configuration>
+						<enableNaming>true</enableNaming>
+					</configuration>
+				</execution>
+			</executions>
+		</plugin>
+	</plugins>
+</build>
 
 </project>
