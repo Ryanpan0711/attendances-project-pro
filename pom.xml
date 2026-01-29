@@ -96,24 +96,26 @@
 			<version>3.5.1</version>
 		</plugin>
 
-		<!-- Tomcat Embedded Plugin for PaaS Deployment -->
+		<!-- Jetty Runner Plugin - Cloud-friendly WAR execution -->
 		<plugin>
-			<groupId>org.apache.tomcat.maven</groupId>
-			<artifactId>tomcat7-maven-plugin</artifactId>
-			<version>2.2</version>
-			<configuration>
-				<path>/</path>
-				<port>8080</port>
-			</configuration>
+			<groupId>org.apache.maven.plugins</groupId>
+			<artifactId>maven-dependency-plugin</artifactId>
+			<version>3.6.0</version>
 			<executions>
 				<execution>
-					<id>tomcat-run</id>
-					<goals>
-						<goal>exec-war-only</goal>
-					</goals>
 					<phase>package</phase>
+					<goals>
+						<goal>copy</goal>
+					</goals>
 					<configuration>
-						<enableNaming>true</enableNaming>
+						<artifactItems>
+							<artifactItem>
+								<groupId>org.eclipse.jetty</groupId>
+								<artifactId>jetty-runner</artifactId>
+								<version>9.4.53.v20231009</version>
+								<destFileName>jetty-runner.jar</destFileName>
+							</artifactItem>
+						</artifactItems>
 					</configuration>
 				</execution>
 			</executions>
