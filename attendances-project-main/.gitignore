@@ -1,0 +1,25 @@
+# --- Maven ---
+target/
+*.log
+
+# --- Eclipse IDE (IDE 的設定檔) ---
+.settings/
+.classpath
+.project
+.metadata/
+bin/
+
+# --- IntelliJ IDEA ---
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# --- VS Code ---
+.vscode/
+
+# --- Mac OS ---
+.DS_Store
+
+# --- jndi設定 ---
+src/main/webapp/META-INF/context.xml

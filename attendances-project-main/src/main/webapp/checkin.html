@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業員工打卡系統</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 350px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .time-display {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        input,
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        input {
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #memo-container {
+            display: none;
+            text-align: left;
+        }
+
+        #status-msg {
+            margin-top: 15px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .btn-export {
+            background-color: #27ae60;
+            margin-top: 5px;
+        }
+
+        .btn-export:hover {
+            background-color: #219150;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h1>🕒 上班打卡</h1>
+        <div class="time-display" id="clock">00:00:00</div>
+
+        <input type="text" id="userId" placeholder="請輸入員工編號 (例: A001)" />
+
+        <div id="memo-container">
+            <label for="memo" style="font-size: 12px; color: #e74c3c;">* 您已遲到，請輸入原因：</label>
+            <input type="text" id="memo" placeholder="例如: 公車誤點" />
+        </div>
+
+        <button id="btn-checkin" onclick="doCheckIn()">上班打卡 (IN)</button>
+        <button class="btn-export" onclick="window.open('/attendances-project/api/export')">📥 匯出報表 (CSV)</button>
+
+        <div id="status-msg"></div>
+    </div>
+
+    <script>
+        // 1. 即時時鐘
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('zh-TW', { hour12: false });
+
+            // 簡單的前端 UX: 超過 09:00 自動顯示備註欄 (實際上後端也會擋)
+            const hour = now.getHours();
+            const min = now.getMinutes();
+            if (hour >= 9 && !(hour === 9 && min === 0)) {
+                document.getElementById('memo-container').style.display = 'block';
+            } else {
+                document.getElementById('memo-container').style.display = 'none';
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 2. 監聽 User ID 輸入，檢查今日狀態
+        document.getElementById('userId').addEventListener('change', async function () {
+            const userId = this.value;
+            if (!userId) return;
+
+            try {
+                // 呼叫 StatusController
+                const resp = await fetch(`/attendances-project/api/status?userId=${userId}`);
+                if (resp.ok) {
+                    const status = await resp.json();
+                    updateButtonState(status);
+                }
+            } catch (e) {
+                console.error("狀態檢查失敗", e);
+            }
+        });
+
+        // 更新按鈕狀態函式
+        function updateButtonState(status) {
+            const btn = document.getElementById('btn-checkin');
+            const msgDiv = document.getElementById('status-msg');
+
+            // 重置狀態
+            btn.disabled = false;
+            btn.innerText = "上班打卡 (IN)";
+            btn.dataset.type = "IN"; // 使用 dataset 儲存當前要執行的類型
+
+            if (status.hasCheckedIn) {
+                if (status.hasCheckedOut) {
+                    // 今日流程已結束
+                    btn.innerText = "今日已完成打卡";
+                    btn.disabled = true;
+                    btn.dataset.type = "DONE";
+                } else {
+                    // 已上班，變更為下班模式
+                    btn.innerText = "下班打卡 (OUT)";
+                    btn.dataset.type = "OUT";
+                }
+            }
+        }
+
+        // 3. 打卡函式
+        async function doCheckIn() {
+            const userId = document.getElementById('userId').value;
+            const memo = document.getElementById('memo').value;
+            const msgDiv = document.getElementById('status-msg');
+            const btn = document.getElementById('btn-checkin');
+
+            // 從按鈕 dataset 取得類型 (預設 IN)
+            const type = btn.dataset.type || "IN";
+
+            if (!userId) {
+                msgDiv.innerText = "請輸入員工編號";
+                msgDiv.className = "error";
+                return;
+            }
+
+            msgDiv.innerText = "打卡中...";
+            msgDiv.className = "";
+
+            try {
+                const response = await fetch('/attendances-project/api/checkin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userId, memo: memo, checkInType: type })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    msgDiv.innerHTML = `✅ ${type} 打卡成功!<br>狀態: ${result.data.status}<br>時間: ${result.data.checkInTime}`;
+                    msgDiv.className = "success";
+                    // 打卡成功後再次檢查狀態，更新按鈕
+                    document.getElementById('userId').dispatchEvent(new Event('change'));
+                } else {
+                    msgDiv.innerText = `❌ 失敗: ${result.message}`;
+                    msgDiv.className = "error";
+                }
+            } catch (err) {
+                msgDiv.innerText = "❌ 系統錯誤，請稍後再試";
+                msgDiv.className = "error";
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+
+</html>
