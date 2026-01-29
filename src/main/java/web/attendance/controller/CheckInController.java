@@ -44,13 +44,13 @@ public class CheckInController extends HttpServlet {
         PrintWriter out = resp.getWriter();
 
         try {
-            // 1. IP 白名單檢查 (Security Check)
-            String clientIp = req.getRemoteAddr();
-            // 如果經過 Proxy，需檢查 X-Forwarded-For，這裡簡化處理
-            if (!ALLOWED_IPS.contains(clientIp)) {
-                resp.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403 Forbidden
-                throw new SecurityException("IP Address not allowed: " + clientIp);
-            }
+            // 1. IP 白名單檢查 (Security Check) - 暫時停用以便測試雲端部署
+            // String clientIp = req.getRemoteAddr();
+            // if (!ALLOWED_IPS.contains(clientIp)) {
+            // resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            // throw new SecurityException("IP Address not allowed: " + clientIp);
+            // }
+            String clientIp = req.getRemoteAddr(); // 保留 IP 記錄但不檢查
 
             // 2. 讀取 JSON Body
             StringBuilder jsonBuffer = new StringBuilder();
